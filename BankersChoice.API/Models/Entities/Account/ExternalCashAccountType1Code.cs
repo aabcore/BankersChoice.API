@@ -1,7 +1,4 @@
-﻿using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
-
-namespace BankersChoice.API.Models.Entities
+﻿namespace BankersChoice.API.Models.Entities.Account
 {
     public enum ExternalCashAccountType1Code
     {

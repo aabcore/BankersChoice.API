@@ -1,4 +1,4 @@
-﻿namespace BankersChoice.API.Models.Entities
+﻿namespace BankersChoice.API.Models.Entities.Account
 {
     public enum CurrencyEnum
     {

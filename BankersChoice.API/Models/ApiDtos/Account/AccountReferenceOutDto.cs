@@ -1,9 +1,7 @@
-﻿using System;
-using System.Linq;
-using BankersChoice.API.Models.Entities;
-using MongoDB.Bson.Serialization.Attributes;
+﻿using System.Linq;
+using BankersChoice.API.Models.Entities.Account;
 
-namespace BankersChoice.API.Models.Account
+namespace BankersChoice.API.Models.ApiDtos.Account
 {
     public class AccountReferenceOutDto
     {
@@ -13,13 +11,13 @@ namespace BankersChoice.API.Models.Account
         public CurrencyEnum Currency { get; set; }
         public string Msisdn { get; set; }
 
-        public static AccountReferenceOutDto EntityToOutDto(AccountReferenceEntity accountReferenceEntity)
+        public static T EntityToOutDto<T>(AccountReferenceEntity accountReferenceEntity) where T: AccountReferenceOutDto, new()
         {
-            return new AccountReferenceOutDto()
+            return new T()
             {
                 Pan = accountReferenceEntity.Pan,
                 MaskedPan = accountReferenceEntity.Pan.Substring(0, 2) +
-                            Enumerable.Repeat("x", accountReferenceEntity.Pan.Length - 4) + 
+                            string.Join("", Enumerable.Repeat("x", accountReferenceEntity.Pan.Length - 4)) + 
                             accountReferenceEntity.Pan.Substring(accountReferenceEntity.Pan.Length - 2, 2),
                 Msisdn = accountReferenceEntity.Msisdn,
                 Currency = accountReferenceEntity.Currency,

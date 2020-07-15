@@ -1,7 +1,7 @@
 ﻿using System;
-using BankersChoice.API.Models.Entities;
+using BankersChoice.API.Models.Entities.Account;
 
-namespace BankersChoice.API.Models.Account
+namespace BankersChoice.API.Models.ApiDtos.Account
 {
     public class BalanceOutDto
     {

@@ -12,5 +12,6 @@ namespace BankersChoice.API.Models
         public string DatabaseName { get; set; }
         public string DatabaseUserName { get; set; }
         public string DatabasePassword { get; set; }
+        public string UsersCollectionName { get; set; }
     }
 }
