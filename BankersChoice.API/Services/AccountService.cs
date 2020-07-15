@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using BankersChoice.API.Controllers;
 using BankersChoice.API.Models;
 using BankersChoice.API.Models.ApiDtos.Account;
+using BankersChoice.API.Models.Entities;
 using BankersChoice.API.Models.Entities.Account;
 using BankersChoice.API.Randomization;
 using BankersChoice.API.Results;
@@ -16,10 +17,12 @@ namespace BankersChoice.API.Services
 {
     public class AccountService : DbService
     {
+        private UserService UserService { get; }
         private readonly IMongoCollection<AccountDetailEntity> _accounts;
 
-        public AccountService(DatabaseSettings dbSettings)
+        public AccountService(DatabaseSettings dbSettings, UserService userService)
         {
+            UserService = userService;
             var database = BuildDatabaseClient(dbSettings);
             _accounts = database.GetCollection<AccountDetailEntity>(dbSettings.AccountsCollectionName);
         }
@@ -192,14 +195,9 @@ namespace BankersChoice.API.Services
             // Set Last Modified Date
             updates.Add(Builders<AccountDetailEntity>.Update.Set(ade => ade.LastModifiedDate, DateTimeOffset.UtcNow));
 
-            var opts = new FindOneAndUpdateOptions<AccountDetailEntity>()
-            {
-                ReturnDocument = ReturnDocument.After
-            };
-
             var updatedAccount = await _accounts.FindOneAndUpdateAsync<AccountDetailEntity>(
                 f => f.ResourceId == resourceId && f.Lock != null && f.Lock.Secret == accountUpdateDto.LockSecret,
-                Builders<AccountDetailEntity>.Update.Combine(updates), opts);
+                Builders<AccountDetailEntity>.Update.Combine(updates), GetEntityAfterUpdateOption<AccountDetailEntity>());
 
             if (updatedAccount != null)
             {
@@ -221,13 +219,14 @@ namespace BankersChoice.API.Services
                 return new NotFoundLockableResult<LockAccountOutDto>();
             }
 
-            var generatedSecret = Guid.NewGuid().ToString().Replace("-", "");
-
-            var opts = new FindOneAndUpdateOptions<AccountDetailEntity>()
+            var foundUser = await UserService.Get(userId);
+            if (foundUser is NotFoundTypedResult<UserEntity>)
             {
-                ReturnDocument = ReturnDocument.After
-            };
+                return new BadRequestLockableResult<LockAccountOutDto>("Given userId doesn't exist.");
+            }
 
+            var generatedSecret = Guid.NewGuid().ToString().Replace("-", "");
+            
             var updatedAccount = await _accounts.FindOneAndUpdateAsync<AccountDetailEntity>(
                 f => f.ResourceId == resourceId && f.Lock == null, Builders<AccountDetailEntity>.Update.Set(
                     ade => ade.Lock, new LockEntity()
@@ -235,7 +234,7 @@ namespace BankersChoice.API.Services
                         IsLocked = true,
                         LockedBy = userId,
                         Secret = generatedSecret
-                    }), opts);
+                    }), GetEntityAfterUpdateOption<AccountDetailEntity>());
 
 
             if (updatedAccount == null)
@@ -292,13 +291,9 @@ namespace BankersChoice.API.Services
                     {SuccessfullyUnlocked = false});
             }
 
-            var opts = new FindOneAndUpdateOptions<AccountDetailEntity>()
-            {
-                ReturnDocument = ReturnDocument.After
-            };
             var updatedAccount = await _accounts.FindOneAndUpdateAsync<AccountDetailEntity>(
                 f => f.ResourceId == resourceId && f.Lock != null && f.Lock.Secret == lockSecret,
-                Builders<AccountDetailEntity>.Update.Unset(ade => ade.Lock), opts);
+                Builders<AccountDetailEntity>.Update.Unset(ade => ade.Lock), GetEntityAfterUpdateOption<AccountDetailEntity>());
 
             if (updatedAccount == null)
             {
@@ -333,13 +328,9 @@ namespace BankersChoice.API.Services
                         new ArgumentOutOfRangeException(nameof(foundAccountResult)));
             }
 
-            var opts = new FindOneAndUpdateOptions<AccountDetailEntity>()
-            {
-                ReturnDocument = ReturnDocument.After
-            };
             var updatedAccount = await _accounts.FindOneAndUpdateAsync<AccountDetailEntity>(
                 f => f.ResourceId == resourceId,
-                Builders<AccountDetailEntity>.Update.Unset(ade => ade.Lock), opts);
+                Builders<AccountDetailEntity>.Update.Unset(ade => ade.Lock), GetEntityAfterUpdateOption<AccountDetailEntity>());
             if (updatedAccount.Lock == null)
             {
                 return new SuccessfulTypedResult<UnlockAccountOutDto>(new UnlockAccountOutDto()

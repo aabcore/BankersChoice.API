@@ -24,5 +24,10 @@ namespace BankersChoice.API.Services
 
             return client.GetDatabase(dbSettings.DatabaseName);
         }
+
+        public FindOneAndUpdateOptions<T> GetEntityAfterUpdateOption<T>() => new FindOneAndUpdateOptions<T>()
+        {
+            ReturnDocument = ReturnDocument.After
+        };
     }
 }

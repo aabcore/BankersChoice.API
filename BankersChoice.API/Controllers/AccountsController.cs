@@ -114,6 +114,8 @@ namespace BankersChoice.API.Controllers
                     return NotFound();
                 case SuccessfulLockableResult<LockAccountOutDto> successfulLockableResult:
                     return Ok(successfulLockableResult.Value);
+                case BadRequestLockableResult<LockAccountOutDto> badRequestLockableResult:
+                    return BadRequest(badRequestLockableResult.Problem);
                 default:
                     return StatusCode(StatusCodes.Status500InternalServerError,
                         new ArgumentOutOfRangeException(nameof(lockAccountResult)));

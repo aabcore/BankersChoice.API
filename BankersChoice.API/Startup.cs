@@ -34,6 +34,7 @@ namespace BankersChoice.API
 
             services.AddSingleton<DatabaseSettings>(sp => sp.GetRequiredService<IOptions<DatabaseSettings>>().Value);
             services.AddSingleton<AccountService>();
+            services.AddSingleton<UserService>();
 
             services.AddControllers()
                 .AddNewtonsoftJson(o => o.SerializerSettings.Converters.Add(new StringEnumConverter()));
