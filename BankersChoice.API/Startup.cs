@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using BankersChoice.API.Controllers;
 using BankersChoice.API.Models;
+using BankersChoice.API.Models.ApiDtos.Transaction;
 using BankersChoice.API.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -35,11 +36,35 @@ namespace BankersChoice.API
             services.AddSingleton<DatabaseSettings>(sp => sp.GetRequiredService<IOptions<DatabaseSettings>>().Value);
             services.AddSingleton<AccountService>();
             services.AddSingleton<UserService>();
+            services.AddSingleton<TransactionService>();
 
             services.AddControllers()
                 .AddNewtonsoftJson(o => o.SerializerSettings.Converters.Add(new StringEnumConverter()));
 
-            services.AddSwaggerGen();
+            services.AddSwaggerGen(c =>
+            {
+                c.GeneratePolymorphicSchemas(
+                    discriminatorSelector: d =>
+                {
+                    if (d == typeof(TransactionDetailsOutDto))
+                        return "transactionType";
+                    else
+                        return null;
+                },
+                    subTypesResolver: type =>
+                {
+                    if (type == typeof(TransactionDetailsOutDto))
+                    {
+                        return new Type[]
+                        {
+                            typeof(CreditTransactionDetailsOutDto),
+                            typeof(DebitTransactionDetailsOutDto)
+                        };
+                    }
+
+                    return Enumerable.Empty<Type>();
+                });
+            });
             services.AddSwaggerGenNewtonsoftSupport(); // Must be places after .AddSwaggerGen();
         }
 

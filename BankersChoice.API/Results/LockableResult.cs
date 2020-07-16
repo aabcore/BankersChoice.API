@@ -37,7 +37,12 @@ namespace BankersChoice.API.Results
     {
         public BadRequestLockableResult(string message)
         {
-            Problem = new BadRequestOutDto() { Message = message };
+            Problem = new BadRequestOutDto(message);
+        }
+
+        public BadRequestLockableResult(BadRequestOutDto problem)
+        {
+            Problem = problem;
         }
 
         public BadRequestOutDto Problem { get; set; }

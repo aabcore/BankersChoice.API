@@ -16,6 +16,7 @@ namespace BankersChoice.API.Models.Entities.Account
         [BsonRepresentation(BsonType.String)]
         public DateTimeOffset LastChangeDateTime { get; set; }
 
-        public string LastCommittedTransaction { get; set; }
+        [BsonRepresentation(BsonType.String)]
+        public Guid? LastCommittedTransaction { get; set; }
     }
 }

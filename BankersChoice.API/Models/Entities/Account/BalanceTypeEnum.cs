@@ -4,7 +4,6 @@
     {
         authorised,
         expected,
-        nonInvoiced,
         closingBooked
     }
 }

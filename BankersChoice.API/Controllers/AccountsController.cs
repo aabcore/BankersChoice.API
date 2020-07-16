@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
+using System.Net.Mime;
 using System.Threading.Tasks;
+using BankersChoice.API.Models;
 using BankersChoice.API.Models.ApiDtos.Account;
 using BankersChoice.API.Models.Entities;
 using BankersChoice.API.Models.Entities.Account;
@@ -14,6 +16,8 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace BankersChoice.API.Controllers
 {
+    [Consumes(MediaTypeNames.Application.Json)]
+    [Produces(MediaTypeNames.Application.Json)]
     [Route("api/[controller]")]
     [ApiController]
     public class AccountsController : ControllerBase
@@ -71,7 +75,7 @@ namespace BankersChoice.API.Controllers
         [HttpPatch]
         [ProducesResponseType(typeof(AccountDetailsOutDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BadRequestOutDto), StatusCodes.Status400BadRequest)]
         [Route("{resourceId:Guid}")]
         public async Task<IActionResult> UpdateAccount(Guid resourceId,
             [FromBody] AccountUpdateDto accountUpdateDto)
@@ -82,11 +86,11 @@ namespace BankersChoice.API.Controllers
             {
                 case FailedLockableResult<AccountDetailsOutDto> failedLockableResult:
                     return StatusCode(StatusCodes.Status500InternalServerError, failedLockableResult.Error);
-                case LockedLockableResult<AccountDetailsOutDto> lockedLockableResult:
-                    return BadRequest("Account is locked by another user");
-                case NotLockedLockableResult<AccountDetailsOutDto> notLockedLockableResult:
-                    return BadRequest("Account must be locked to update");
-                case NotFoundLockableResult<AccountDetailsOutDto> notFoundLockableResult:
+                case LockedLockableResult<AccountDetailsOutDto> _:
+                    return BadRequest(BadRequestOutDto.AccountLockedByAnotherUser);
+                case NotLockedLockableResult<AccountDetailsOutDto> _:
+                    return BadRequest(BadRequestOutDto.AccountNotLocked);
+                case NotFoundLockableResult<AccountDetailsOutDto> _:
                     return StatusCode(StatusCodes.Status404NotFound);
                 case SuccessfulLockableResult<AccountDetailsOutDto> successfulLockableResult:
                     return Ok(successfulLockableResult.Value);
@@ -215,5 +219,7 @@ namespace BankersChoice.API.Controllers
 
         [Required]
         public string Msisdn { get; set; }
+
+        public AmountDto AuthorizedLimit { get; set; }
     }
 }

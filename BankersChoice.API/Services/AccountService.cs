@@ -8,10 +8,12 @@ using BankersChoice.API.Models;
 using BankersChoice.API.Models.ApiDtos.Account;
 using BankersChoice.API.Models.Entities;
 using BankersChoice.API.Models.Entities.Account;
+using BankersChoice.API.Models.Entities.Transaction;
 using BankersChoice.API.Randomization;
 using BankersChoice.API.Results;
 using Microsoft.Extensions.Logging.EventLog;
 using MongoDB.Driver;
+using Exception = System.Exception;
 
 namespace BankersChoice.API.Services
 {
@@ -38,7 +40,6 @@ namespace BankersChoice.API.Services
 
         public async Task<IEnumerable<AccountDetailsOutDto>> Get(GetFilter getFilter)
         {
-            List<AccountDetailEntity> accountDetailEntities;
             var searchFilters = new List<FilterDefinition<AccountDetailEntity>>();
             if (getFilter != null)
             {
@@ -62,7 +63,7 @@ namespace BankersChoice.API.Services
                 searchFilters.Add(Builders<AccountDetailEntity>.Filter.Empty);
             }
 
-            accountDetailEntities =
+            var accountDetailEntities =
                 (await _accounts.FindAsync(Builders<AccountDetailEntity>.Filter.And(searchFilters))).ToList();
 
 
@@ -101,7 +102,7 @@ namespace BankersChoice.API.Services
                 {
                     new BalanceEntity()
                     {
-                        BalanceType = BalanceTypeEnum.expected,
+                        BalanceType = BalanceTypeEnum.closingBooked,
                         BalanceAmount = new AmountEntity()
                         {
                             Amount = accountIn.InitialBalance.Amount,
@@ -109,12 +110,19 @@ namespace BankersChoice.API.Services
                         },
                         CreditLimitIncluded = false,
                         LastChangeDateTime = DateTimeOffset.UtcNow,
-                        LastCommittedTransaction = string.Empty
+                        LastCommittedTransaction = null
                     },
-                }
+                },
+                AuthorizedLimit = accountIn.AuthorizedLimit != null
+                    ? new AmountEntity()
+                    {
+                        Currency = accountIn.AuthorizedLimit.Currency,
+                        Amount = accountIn.AuthorizedLimit.Amount
+                    }
+                    : null
             };
 
-            if (accountIn.CashAccountType == ExternalCashAccountType1Code.CHAR)
+            if (accountIn.AuthorizedLimit != null)
             {
                 accountDetailEntity.Balances = accountDetailEntity.Balances.Concat(new BalanceEntity[]
                 {
@@ -123,12 +131,12 @@ namespace BankersChoice.API.Services
                         BalanceType = BalanceTypeEnum.authorised,
                         BalanceAmount = new AmountEntity()
                         {
-                            Amount = accountIn.InitialBalance.Amount + 1000,
-                            Currency = accountIn.InitialBalance.Currency
+                            Amount = accountIn.InitialBalance.Amount + accountIn.AuthorizedLimit.Amount,
+                            Currency = accountIn.AuthorizedLimit.Currency
                         },
                         CreditLimitIncluded = true,
                         LastChangeDateTime = DateTimeOffset.UtcNow,
-                        LastCommittedTransaction = string.Empty
+                        LastCommittedTransaction = null
                     },
                 });
             }
@@ -197,7 +205,8 @@ namespace BankersChoice.API.Services
 
             var updatedAccount = await _accounts.FindOneAndUpdateAsync<AccountDetailEntity>(
                 f => f.ResourceId == resourceId && f.Lock != null && f.Lock.Secret == accountUpdateDto.LockSecret,
-                Builders<AccountDetailEntity>.Update.Combine(updates), GetEntityAfterUpdateOption<AccountDetailEntity>());
+                Builders<AccountDetailEntity>.Update.Combine(updates),
+                GetEntityAfterUpdateOption<AccountDetailEntity>());
 
             if (updatedAccount != null)
             {
@@ -208,6 +217,46 @@ namespace BankersChoice.API.Services
             {
                 return new FailedLockableResult<AccountDetailsOutDto>(
                     new Exception("Lock status changed unexpectedly. No update."));
+            }
+        }
+
+        public class LockCheck
+        {
+            public bool AccountLocked { get; set; }
+            public bool CorrectSecret { get; set; }
+        }
+
+        public async Task<TypedResult<LockCheck>> CheckLock(Guid resourceId, string secret)
+        {
+            var foundAccountResult = await GetEntity(resourceId);
+            AccountDetailEntity foundAccount;
+            switch (foundAccountResult)
+            {
+                case BadRequestTypedResult<AccountDetailEntity> badRequestTypedResult:
+                    return new BadRequestTypedResult<LockCheck>(badRequestTypedResult.Problem);
+                case FailedTypedResult<AccountDetailEntity> failedTypedResult:
+                    return new FailedTypedResult<LockCheck>(failedTypedResult.Error);
+                case NotFoundTypedResult<AccountDetailEntity> _:
+                    return new NotFoundTypedResult<LockCheck>();
+                case SuccessfulTypedResult<AccountDetailEntity> successfulTypedResult:
+                    foundAccount = successfulTypedResult.Value;
+                    break;
+                default:
+                    return new FailedTypedResult<LockCheck>(new ArgumentOutOfRangeException(nameof(foundAccountResult)));
+            }
+
+            if (foundAccount.Lock == null)
+            {
+                return new SuccessfulTypedResult<LockCheck>(new LockCheck() {AccountLocked = false});
+            }
+
+            if (foundAccount.Lock.Secret == secret)
+            {
+                return new SuccessfulTypedResult<LockCheck>(new LockCheck() {AccountLocked = true, CorrectSecret = true});
+            }
+            else
+            {
+                return new SuccessfulTypedResult<LockCheck>(new LockCheck() {AccountLocked = true, CorrectSecret = false});
             }
         }
 
@@ -226,7 +275,7 @@ namespace BankersChoice.API.Services
             }
 
             var generatedSecret = Guid.NewGuid().ToString().Replace("-", "");
-            
+
             var updatedAccount = await _accounts.FindOneAndUpdateAsync<AccountDetailEntity>(
                 f => f.ResourceId == resourceId && f.Lock == null, Builders<AccountDetailEntity>.Update.Set(
                     ade => ade.Lock, new LockEntity()
@@ -293,7 +342,8 @@ namespace BankersChoice.API.Services
 
             var updatedAccount = await _accounts.FindOneAndUpdateAsync<AccountDetailEntity>(
                 f => f.ResourceId == resourceId && f.Lock != null && f.Lock.Secret == lockSecret,
-                Builders<AccountDetailEntity>.Update.Unset(ade => ade.Lock), GetEntityAfterUpdateOption<AccountDetailEntity>());
+                Builders<AccountDetailEntity>.Update.Unset(ade => ade.Lock),
+                GetEntityAfterUpdateOption<AccountDetailEntity>());
 
             if (updatedAccount == null)
             {
@@ -330,7 +380,8 @@ namespace BankersChoice.API.Services
 
             var updatedAccount = await _accounts.FindOneAndUpdateAsync<AccountDetailEntity>(
                 f => f.ResourceId == resourceId,
-                Builders<AccountDetailEntity>.Update.Unset(ade => ade.Lock), GetEntityAfterUpdateOption<AccountDetailEntity>());
+                Builders<AccountDetailEntity>.Update.Unset(ade => ade.Lock),
+                GetEntityAfterUpdateOption<AccountDetailEntity>());
             if (updatedAccount.Lock == null)
             {
                 return new SuccessfulTypedResult<UnlockAccountOutDto>(new UnlockAccountOutDto()
@@ -343,7 +394,7 @@ namespace BankersChoice.API.Services
             }
         }
 
-        private async Task<TypedResult<AccountDetailEntity>> GetEntity(Guid resourceId)
+        public async Task<TypedResult<AccountDetailEntity>> GetEntity(Guid resourceId)
         {
             try
             {
@@ -362,6 +413,263 @@ namespace BankersChoice.API.Services
             catch (Exception e)
             {
                 return new FailedTypedResult<AccountDetailEntity>(e);
+            }
+        }
+
+        public async Task<Result> UpdateBalance_NewDebit(DebitTransactionEntity newDebitTransaction)
+        {
+            try
+            {
+                var dateTimeNow = DateTimeOffset.UtcNow;
+                var foundAccountResult = await GetEntity(newDebitTransaction.AssociatedAccountId);
+                AccountDetailEntity foundAccount;
+                switch (foundAccountResult)
+                {
+                    case BadRequestTypedResult<AccountDetailEntity> badRequestTypedResult:
+                        return new FailedResult(new Exception(badRequestTypedResult.Problem.Message));
+                    case FailedTypedResult<AccountDetailEntity> failedTypedResult:
+                        return new FailedResult(failedTypedResult.Error);
+                    case NotFoundTypedResult<AccountDetailEntity> notFoundTypedResult:
+                        return new FailedResult(new Exception("Account Not Found"));
+                    case SuccessfulTypedResult<AccountDetailEntity> successfulTypedResult:
+                        foundAccount = successfulTypedResult.Value;
+                        break;
+                    default:
+                        return new FailedResult(new ArgumentOutOfRangeException(nameof(foundAccountResult)));
+                }
+
+                var balances = foundAccount.Balances.ToList();
+                var closingBookedBalance = balances.First(b => b.BalanceType == BalanceTypeEnum.closingBooked);
+                var expectedBalance = balances.FirstOrDefault(b => b.BalanceType == BalanceTypeEnum.expected);
+                if (expectedBalance == null)
+                {
+                    expectedBalance = new BalanceEntity()
+                    {
+                        BalanceType = BalanceTypeEnum.expected,
+                        BalanceAmount = new AmountEntity()
+                        {
+                            Amount = closingBookedBalance.BalanceAmount.Amount,
+                            Currency = closingBookedBalance.BalanceAmount.Currency
+                        },
+                        CreditLimitIncluded = false,
+                        LastChangeDateTime = dateTimeNow
+                    };
+                    balances.Add(expectedBalance);
+                }
+
+                expectedBalance.BalanceAmount.Amount -= newDebitTransaction.TransactionAmount.Amount;
+                expectedBalance.LastChangeDateTime = dateTimeNow;
+                expectedBalance.LastCommittedTransaction = newDebitTransaction.TransactionId;
+
+                if (foundAccount.AuthorizedLimit != null)
+                {
+                    var authorizedBalance = balances.FirstOrDefault(b => b.BalanceType == BalanceTypeEnum.authorised);
+                    if (authorizedBalance == null)
+                    {
+                        authorizedBalance = new BalanceEntity()
+                        {
+                            BalanceType = BalanceTypeEnum.authorised,
+                            BalanceAmount = new AmountEntity()
+                            {
+                                Amount = expectedBalance.BalanceAmount.Amount,
+                                Currency = expectedBalance.BalanceAmount.Currency
+                            },
+                            CreditLimitIncluded = true,
+                            LastChangeDateTime = dateTimeNow
+                        };
+                        balances.Add(authorizedBalance);
+                    }
+
+                    authorizedBalance.BalanceAmount.Amount =
+                        expectedBalance.BalanceAmount.Amount + foundAccount.AuthorizedLimit.Amount;
+                    authorizedBalance.LastChangeDateTime = dateTimeNow;
+                    authorizedBalance.LastCommittedTransaction = newDebitTransaction.TransactionId;
+                }
+
+                foundAccount.Balances = balances;
+                foundAccount.LastModifiedDate = dateTimeNow;
+
+                _accounts.FindOneAndReplace(a => a.ResourceId == foundAccount.ResourceId, foundAccount);
+                return new SuccessResult();
+            }
+            catch (Exception e)
+            {
+                return new FailedResult(e);
+            }
+        }
+
+        public async Task<Result> UpdateBalance_NewCredit(CreditTransactionEntity newCreditTransaction)
+        {
+            try
+            {
+                var dateTimeNow = DateTimeOffset.UtcNow;
+                var foundAccountResult = await GetEntity(newCreditTransaction.AssociatedAccountId);
+                AccountDetailEntity foundAccount;
+                switch (foundAccountResult)
+                {
+                    case BadRequestTypedResult<AccountDetailEntity> badRequestTypedResult:
+                        return new FailedResult(new Exception(badRequestTypedResult.Problem.Message));
+                    case FailedTypedResult<AccountDetailEntity> failedTypedResult:
+                        return new FailedResult(failedTypedResult.Error);
+                    case NotFoundTypedResult<AccountDetailEntity> notFoundTypedResult:
+                        return new FailedResult(new Exception("Account Not Found"));
+                    case SuccessfulTypedResult<AccountDetailEntity> successfulTypedResult:
+                        foundAccount = successfulTypedResult.Value;
+                        break;
+                    default:
+                        return new FailedResult(new ArgumentOutOfRangeException(nameof(foundAccountResult)));
+                }
+
+                var balances = foundAccount.Balances.ToList();
+                var closingBookedBalance = balances.First(b => b.BalanceType == BalanceTypeEnum.closingBooked);
+                var expectedBalance = balances.FirstOrDefault(b => b.BalanceType == BalanceTypeEnum.expected);
+                if (expectedBalance == null)
+                {
+                    expectedBalance = new BalanceEntity()
+                    {
+                        BalanceType = BalanceTypeEnum.expected,
+                        BalanceAmount = new AmountEntity()
+                        {
+                            Amount = closingBookedBalance.BalanceAmount.Amount,
+                            Currency = closingBookedBalance.BalanceAmount.Currency
+                        },
+                        CreditLimitIncluded = false,
+                    };
+                    balances.Add(expectedBalance);
+                }
+
+                expectedBalance.BalanceAmount.Amount += newCreditTransaction.TransactionAmount.Amount;
+                expectedBalance.LastChangeDateTime = dateTimeNow;
+                expectedBalance.LastCommittedTransaction = newCreditTransaction.TransactionId;
+
+                if (foundAccount.AuthorizedLimit != null)
+                {
+                    var authorizedBalance = balances.FirstOrDefault(b => b.BalanceType == BalanceTypeEnum.authorised);
+                    if (authorizedBalance == null)
+                    {
+                        authorizedBalance = new BalanceEntity()
+                        {
+                            BalanceType = BalanceTypeEnum.authorised,
+                            CreditLimitIncluded = true,
+                        };
+                        balances.Add(authorizedBalance);
+                    }
+
+                    authorizedBalance.BalanceAmount.Amount =
+                        expectedBalance.BalanceAmount.Amount + foundAccount.AuthorizedLimit.Amount;
+                    authorizedBalance.LastChangeDateTime = dateTimeNow;
+                    authorizedBalance.LastCommittedTransaction = newCreditTransaction.TransactionId;
+                }
+
+                foundAccount.Balances = balances;
+                foundAccount.LastModifiedDate = dateTimeNow;
+
+                _accounts.FindOneAndReplace(a => a.ResourceId == foundAccount.ResourceId, foundAccount);
+                return new SuccessResult();
+            }
+            catch (Exception e)
+            {
+                return new FailedResult(e);
+            }
+        }
+
+        public async Task<Result> UpdateBalance_BookCredit(CreditTransactionEntity newCreditTransaction)
+        {
+            try
+            {
+                var dateTimeNow = DateTimeOffset.UtcNow;
+                var foundAccountResult = await GetEntity(newCreditTransaction.AssociatedAccountId);
+                AccountDetailEntity foundAccount;
+                switch (foundAccountResult)
+                {
+                    case BadRequestTypedResult<AccountDetailEntity> badRequestTypedResult:
+                        return new FailedResult(new Exception(badRequestTypedResult.Problem.Message));
+                    case FailedTypedResult<AccountDetailEntity> failedTypedResult:
+                        return new FailedResult(failedTypedResult.Error);
+                    case NotFoundTypedResult<AccountDetailEntity> notFoundTypedResult:
+                        return new FailedResult(new Exception("Account Not Found"));
+                    case SuccessfulTypedResult<AccountDetailEntity> successfulTypedResult:
+                        foundAccount = successfulTypedResult.Value;
+                        break;
+                    default:
+                        return new FailedResult(new ArgumentOutOfRangeException(nameof(foundAccountResult)));
+                }
+
+                var balances = foundAccount.Balances.ToList();
+                var closingBookedBalance = balances.First(b => b.BalanceType == BalanceTypeEnum.closingBooked);
+
+                closingBookedBalance.BalanceAmount.Amount += newCreditTransaction.TransactionAmount.Amount;
+                closingBookedBalance.LastChangeDateTime = dateTimeNow;
+                closingBookedBalance.LastCommittedTransaction = newCreditTransaction.TransactionId;
+
+                var expectedBalance = balances.FirstOrDefault(b => b.BalanceType == BalanceTypeEnum.expected);
+                if (expectedBalance != null)
+                {
+                    if (expectedBalance.BalanceAmount.Amount == closingBookedBalance.BalanceAmount.Amount)
+                    {
+                        balances.Remove(expectedBalance);
+                    }
+                }
+
+                foundAccount.Balances = balances;
+                foundAccount.LastModifiedDate = dateTimeNow;
+
+                _accounts.FindOneAndReplace(a => a.ResourceId == foundAccount.ResourceId, foundAccount);
+                return new SuccessResult();
+            }
+            catch (Exception e)
+            {
+                return new FailedResult(e);
+            }
+        }
+
+        public async Task<Result> UpdateBalance_BookDebit(DebitTransactionEntity newDebitTransaction)
+        {
+            try
+            {
+                var dateTimeNow = DateTimeOffset.UtcNow;
+                var foundAccountResult = await GetEntity(newDebitTransaction.AssociatedAccountId);
+                AccountDetailEntity foundAccount;
+                switch (foundAccountResult)
+                {
+                    case BadRequestTypedResult<AccountDetailEntity> badRequestTypedResult:
+                        return new FailedResult(new Exception(badRequestTypedResult.Problem.Message));
+                    case FailedTypedResult<AccountDetailEntity> failedTypedResult:
+                        return new FailedResult(failedTypedResult.Error);
+                    case NotFoundTypedResult<AccountDetailEntity> _:
+                        return new FailedResult(new Exception("Account Not Found"));
+                    case SuccessfulTypedResult<AccountDetailEntity> successfulTypedResult:
+                        foundAccount = successfulTypedResult.Value;
+                        break;
+                    default:
+                        return new FailedResult(new ArgumentOutOfRangeException(nameof(foundAccountResult)));
+                }
+
+                var balances = foundAccount.Balances.ToList();
+                var closingBookedBalance = balances.First(b => b.BalanceType == BalanceTypeEnum.closingBooked);
+
+                closingBookedBalance.BalanceAmount.Amount -= newDebitTransaction.TransactionAmount.Amount;
+                closingBookedBalance.LastChangeDateTime = dateTimeNow;
+                closingBookedBalance.LastCommittedTransaction = newDebitTransaction.TransactionId;
+
+                var expectedBalance = balances.FirstOrDefault(b => b.BalanceType == BalanceTypeEnum.expected);
+                if (expectedBalance != null)
+                {
+                    if (expectedBalance.BalanceAmount.Amount == closingBookedBalance.BalanceAmount.Amount)
+                    {
+                        balances.Remove(expectedBalance);
+                    }
+                }
+
+                foundAccount.Balances = balances;
+                foundAccount.LastModifiedDate = dateTimeNow;
+
+                _accounts.FindOneAndReplace(a => a.ResourceId == foundAccount.ResourceId, foundAccount);
+                return new SuccessResult();
+            }
+            catch (Exception e)
+            {
+                return new FailedResult(e);
             }
         }
     }

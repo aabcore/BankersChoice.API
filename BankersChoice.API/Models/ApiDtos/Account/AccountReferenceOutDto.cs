@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using BankersChoice.API.Models.Entities.Account;
 
 namespace BankersChoice.API.Models.ApiDtos.Account
@@ -24,5 +25,16 @@ namespace BankersChoice.API.Models.ApiDtos.Account
                 RoutingNumbers = RoutingNumbersOutDto.EntityToOutDto(accountReferenceEntity.RoutingNumbers)
             };
         }
+    }
+
+    public class AccountReferenceInDto
+    {
+        [Required]
+        public string Pan { get; set; }
+        [Required]
+        public RoutingNumbersOutDto RoutingNumbers { get; set; }
+        [Required]
+        public CurrencyEnum Currency { get; set; }
+        public string Msisdn { get; set; }
     }
 }

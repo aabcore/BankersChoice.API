@@ -9,7 +9,7 @@ namespace BankersChoice.API.Models.ApiDtos.Account
         public BalanceTypeEnum BalanceType { get; set; }
         public bool CreditLimitIncluded { get; set; }
         public DateTimeOffset LastChangeDateTime { get; set; }
-        public string LastCommittedTransaction { get; set; }
+        public Guid? LastCommittedTransaction { get; set; }
 
         public static BalanceOutDto EntityToOutDto(BalanceEntity balanceEntity)
         {

@@ -35,7 +35,12 @@ namespace BankersChoice.API.Results
     {
         public BadRequestTypedResult(string message)
         {
-            Problem = new BadRequestOutDto() {Message = message};
+            Problem = new BadRequestOutDto(message);
+        }
+
+        public BadRequestTypedResult(BadRequestOutDto badRequestOutDto)
+        {
+            Problem = badRequestOutDto;
         }
 
         public BadRequestOutDto Problem { get; set; }
