@@ -144,6 +144,7 @@ namespace BankersChoice.API.Services
             try
             {
                 var foundAccountResult = await AccountService.GetEntity(accountId);
+                AccountDetailEntity foundAccount;
                 switch (foundAccountResult)
                 {
                     case BadRequestTypedResult<AccountDetailEntity> badRequestTypedResult:
@@ -152,11 +153,17 @@ namespace BankersChoice.API.Services
                         return new FailedLockableResult<TransactionDetailsOutDto>(failedTypedResult.Error);
                     case NotFoundTypedResult<AccountDetailEntity> _:
                         return new BadRequestLockableResult<TransactionDetailsOutDto>(BadRequestOutDto.AccountNotFound);
-                    case SuccessfulTypedResult<AccountDetailEntity> _:
+                    case SuccessfulTypedResult<AccountDetailEntity> successfulTypedResult:
+                        foundAccount = successfulTypedResult.Value;
                         break;
                     default:
                         return new FailedLockableResult<TransactionDetailsOutDto>(
                             new ArgumentOutOfRangeException(nameof(foundAccountResult)));
+                }
+
+                if (foundAccount.Status != AccountStatusEnum.enabled)
+                {
+                    return new BadRequestLockableResult<TransactionDetailsOutDto>(BadRequestOutDto.AccountNotEnabled);
                 }
 
                 var newDebitTransaction = new DebitTransactionEntity
@@ -214,6 +221,8 @@ namespace BankersChoice.API.Services
             try
             {
                 var foundAccountResult = await AccountService.GetEntity(accountId);
+
+                AccountDetailEntity foundAccount;
                 switch (foundAccountResult)
                 {
                     case BadRequestTypedResult<AccountDetailEntity> badRequestTypedResult:
@@ -222,11 +231,17 @@ namespace BankersChoice.API.Services
                         return new FailedLockableResult<TransactionDetailsOutDto>(failedTypedResult.Error);
                     case NotFoundTypedResult<AccountDetailEntity> _:
                         return new BadRequestLockableResult<TransactionDetailsOutDto>(BadRequestOutDto.AccountNotFound);
-                    case SuccessfulTypedResult<AccountDetailEntity> _:
+                    case SuccessfulTypedResult<AccountDetailEntity> successfulTypedResult:
+                        foundAccount = successfulTypedResult.Value;
                         break;
                     default:
                         return new FailedLockableResult<TransactionDetailsOutDto>(
                             new ArgumentOutOfRangeException(nameof(foundAccountResult)));
+                }
+
+                if (foundAccount.Status != AccountStatusEnum.enabled)
+                {
+                    return new BadRequestLockableResult<TransactionDetailsOutDto>(BadRequestOutDto.AccountNotEnabled);
                 }
 
                 var newCreditTransaction = new CreditTransactionEntity()

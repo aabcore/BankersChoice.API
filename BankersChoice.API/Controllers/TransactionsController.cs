@@ -220,7 +220,7 @@ namespace BankersChoice.API.Controllers
                     return new ReturnEarly_EarlyReturnResult<IActionResult>(BadRequest(badRequestTypedResult.Problem));
                 case FailedTypedResult<AccountService.LockCheck> failedTypedResult:
                     return new ReturnEarly_EarlyReturnResult<IActionResult>(StatusCode(StatusCodes.Status500InternalServerError, failedTypedResult.Error));
-                case NotFoundTypedResult<AccountService.LockCheck> notFoundTypedResult:
+                case NotFoundTypedResult<AccountService.LockCheck> _:
                     return new ReturnEarly_EarlyReturnResult<IActionResult>(BadRequest(BadRequestOutDto.AccountNotFound));
                 case SuccessfulTypedResult<AccountService.LockCheck> successfulTypedResult:
                     if (!successfulTypedResult.Value.AccountLocked)
