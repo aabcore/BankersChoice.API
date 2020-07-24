@@ -2,7 +2,7 @@
 {
     public enum CurrencyEnum
     {
-        USD,
-        EUR,
+        GSC,
+        WC
     }
 }

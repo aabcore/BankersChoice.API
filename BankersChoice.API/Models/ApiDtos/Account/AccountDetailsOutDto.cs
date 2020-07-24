@@ -19,7 +19,8 @@ namespace BankersChoice.API.Models.ApiDtos.Account
         public IEnumerable<BalanceOutDto> Balances { get; set; }
         public LockOutDto Lock { get; set; }
         public DateTimeOffset LastModifiedDate { get; set; }
-        public AmountDto AuthorizedLimit { get; set; }
+        public DateTimeOffset CreatedDate { get; set; }
+        public AmountOutDto AuthorizedLimit { get; set; }
 
         public static AccountDetailsOutDto EntityToOutDto(AccountDetailEntity accountDetailEntity)
         {
@@ -35,8 +36,9 @@ namespace BankersChoice.API.Models.ApiDtos.Account
             accountDetailsFromReference.Balances = accountDetailEntity.Balances.Select(BalanceOutDto.EntityToOutDto);
             accountDetailsFromReference.Lock = LockOutDto.EntityToOutDto(accountDetailEntity.Lock);
             accountDetailsFromReference.LastModifiedDate = accountDetailEntity.LastModifiedDate;
+            accountDetailsFromReference.CreatedDate = accountDetailEntity.CreatedDate;
             accountDetailsFromReference.AuthorizedLimit = accountDetailEntity.AuthorizedLimit != null
-                ? AmountDto.EntityToOutDto(accountDetailEntity.AuthorizedLimit)
+                ? AmountOutDto.EntityToOutDto(accountDetailEntity.AuthorizedLimit)
                 : null;
             return accountDetailsFromReference;
         }

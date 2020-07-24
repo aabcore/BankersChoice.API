@@ -166,17 +166,18 @@ namespace BankersChoice.API.Services
                     return new BadRequestLockableResult<TransactionDetailsOutDto>(BadRequestOutDto.AccountNotEnabled);
                 }
 
+                if (foundAccount.Currency != newTransactionInDto.TransactionAmount.Currency)
+                {
+                    return new BadRequestLockableResult<TransactionDetailsOutDto>(BadRequestOutDto.WrongCurrencyType);
+                }
+
                 var newDebitTransaction = new DebitTransactionEntity
                 {
                     TransactionId = Guid.NewGuid(),
                     AssociatedAccountId = accountId,
                     TransactionType = TransactionTypeEnum.DEBIT,
                     CheckId = newTransactionInDto.CheckId,
-                    TransactionAmount = new AmountEntity()
-                    {
-                        Amount = newTransactionInDto.TransactionAmount.Amount,
-                        Currency = newTransactionInDto.TransactionAmount.Currency
-                    },
+                    TransactionAmount = newTransactionInDto.TransactionAmount.ToEntity(),
                     EntryDate = DateTimeOffset.UtcNow,
                     BookingDate = null,
                     BookingStatus = BookingStatusEnum.PENDING,
@@ -244,17 +245,18 @@ namespace BankersChoice.API.Services
                     return new BadRequestLockableResult<TransactionDetailsOutDto>(BadRequestOutDto.AccountNotEnabled);
                 }
 
+                if (foundAccount.Currency != newCreditTransactionInDto.TransactionAmount.Currency)
+                {
+                    return new BadRequestLockableResult<TransactionDetailsOutDto>(BadRequestOutDto.WrongCurrencyType);
+                }
+
                 var newCreditTransaction = new CreditTransactionEntity()
                 {
                     TransactionId = Guid.NewGuid(),
                     AssociatedAccountId = accountId,
                     TransactionType = TransactionTypeEnum.CREDIT,
                     CheckId = newCreditTransactionInDto.CheckId,
-                    TransactionAmount = new AmountEntity()
-                    {
-                        Amount = newCreditTransactionInDto.TransactionAmount.Amount,
-                        Currency = newCreditTransactionInDto.TransactionAmount.Currency
-                    },
+                    TransactionAmount = newCreditTransactionInDto.TransactionAmount.ToEntity(),
                     EntryDate = DateTimeOffset.UtcNow,
                     BookingDate = null,
                     BookingStatus = BookingStatusEnum.PENDING,

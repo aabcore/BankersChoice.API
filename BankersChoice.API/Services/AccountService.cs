@@ -5,6 +5,7 @@ using System.Linq.Expressions;
 using System.Threading.Tasks;
 using BankersChoice.API.Controllers;
 using BankersChoice.API.Models;
+using BankersChoice.API.Models.ApiDtos;
 using BankersChoice.API.Models.ApiDtos.Account;
 using BankersChoice.API.Models.Entities;
 using BankersChoice.API.Models.Entities.Account;
@@ -80,9 +81,14 @@ namespace BankersChoice.API.Services
                 : null;
         }
 
-        public async Task<AccountDetailsOutDto> Create(AccountNewDto accountIn)
+        public async Task<LockableResult<AccountDetailsOutDto>> Create(AccountNewDto accountIn)
         {
+            if (accountIn.AuthorizedLimit != null && accountIn.AuthorizedLimit.Currency != accountIn.InitialBalance.Currency)
+            {
+                return new BadRequestLockableResult<AccountDetailsOutDto>(BadRequestOutDto.WrongCurrencyType);
+            }
             var rand = new Random();
+            var dateTimeNow = DateTimeOffset.UtcNow;
             var accountDetailEntity = new AccountDetailEntity()
             {
                 ResourceId = Guid.NewGuid(),
@@ -94,6 +100,7 @@ namespace BankersChoice.API.Services
                 Lock = null,
                 Pan = string.Join("", "000123456789".Select(c => rand.Next(0, 10))),
                 Msisdn = accountIn.Msisdn,
+                Currency = accountIn.InitialBalance.Currency,
                 RoutingNumbers = new AccountReferenceEntity.RoutingNumbersEntity()
                 {
                     Ach = AabRoutingNumbers.GetRandomRoutingNumber()
@@ -103,23 +110,13 @@ namespace BankersChoice.API.Services
                     new BalanceEntity()
                     {
                         BalanceType = BalanceTypeEnum.closingBooked,
-                        BalanceAmount = new AmountEntity()
-                        {
-                            Amount = accountIn.InitialBalance.Amount,
-                            Currency = accountIn.InitialBalance.Currency
-                        },
+                        BalanceAmount = accountIn.InitialBalance.ToEntity(),
                         CreditLimitIncluded = false,
-                        LastChangeDateTime = DateTimeOffset.UtcNow,
+                        LastChangeDateTime = dateTimeNow,
                         LastCommittedTransaction = null
                     },
                 },
-                AuthorizedLimit = accountIn.AuthorizedLimit != null
-                    ? new AmountEntity()
-                    {
-                        Currency = accountIn.AuthorizedLimit.Currency,
-                        Amount = accountIn.AuthorizedLimit.Amount
-                    }
-                    : null
+                AuthorizedLimit = accountIn.AuthorizedLimit?.ToEntity()
             };
 
             if (accountIn.AuthorizedLimit != null)
@@ -129,22 +126,19 @@ namespace BankersChoice.API.Services
                     new BalanceEntity()
                     {
                         BalanceType = BalanceTypeEnum.authorised,
-                        BalanceAmount = new AmountEntity()
-                        {
-                            Amount = accountIn.InitialBalance.Amount + accountIn.AuthorizedLimit.Amount,
-                            Currency = accountIn.AuthorizedLimit.Currency
-                        },
+                        BalanceAmount = accountIn.InitialBalance.ToEntity().Add(accountIn.AuthorizedLimit.ToEntity()),
                         CreditLimitIncluded = true,
-                        LastChangeDateTime = DateTimeOffset.UtcNow,
+                        LastChangeDateTime = dateTimeNow,
                         LastCommittedTransaction = null
                     },
                 });
             }
 
-            accountDetailEntity.LastModifiedDate = DateTimeOffset.UtcNow;
+            accountDetailEntity.LastModifiedDate = dateTimeNow;
+            accountDetailEntity.CreatedDate = dateTimeNow;
 
             await _accounts.InsertOneAsync(accountDetailEntity);
-            return AccountDetailsOutDto.EntityToOutDto(accountDetailEntity);
+            return new SuccessfulLockableResult<AccountDetailsOutDto>(AccountDetailsOutDto.EntityToOutDto(accountDetailEntity));
         }
 
         public async Task<LockableResult<AccountDetailsOutDto>> Update(Guid resourceId,
@@ -446,18 +440,14 @@ namespace BankersChoice.API.Services
                     expectedBalance = new BalanceEntity()
                     {
                         BalanceType = BalanceTypeEnum.expected,
-                        BalanceAmount = new AmountEntity()
-                        {
-                            Amount = closingBookedBalance.BalanceAmount.Amount,
-                            Currency = closingBookedBalance.BalanceAmount.Currency
-                        },
+                        BalanceAmount = closingBookedBalance.BalanceAmount.RealCopy(),
                         CreditLimitIncluded = false,
                         LastChangeDateTime = dateTimeNow
                     };
                     balances.Add(expectedBalance);
                 }
 
-                expectedBalance.BalanceAmount.Amount -= newDebitTransaction.TransactionAmount.Amount;
+                expectedBalance.BalanceAmount = expectedBalance.BalanceAmount.Subtract(newDebitTransaction.TransactionAmount);
                 expectedBalance.LastChangeDateTime = dateTimeNow;
                 expectedBalance.LastCommittedTransaction = newDebitTransaction.TransactionId;
 
@@ -469,19 +459,14 @@ namespace BankersChoice.API.Services
                         authorizedBalance = new BalanceEntity()
                         {
                             BalanceType = BalanceTypeEnum.authorised,
-                            BalanceAmount = new AmountEntity()
-                            {
-                                Amount = expectedBalance.BalanceAmount.Amount,
-                                Currency = expectedBalance.BalanceAmount.Currency
-                            },
+                            BalanceAmount = expectedBalance.BalanceAmount.RealCopy(),
                             CreditLimitIncluded = true,
                             LastChangeDateTime = dateTimeNow
                         };
                         balances.Add(authorizedBalance);
                     }
 
-                    authorizedBalance.BalanceAmount.Amount =
-                        expectedBalance.BalanceAmount.Amount + foundAccount.AuthorizedLimit.Amount;
+                    authorizedBalance.BalanceAmount = expectedBalance.BalanceAmount.Add(foundAccount.AuthorizedLimit);
                     authorizedBalance.LastChangeDateTime = dateTimeNow;
                     authorizedBalance.LastCommittedTransaction = newDebitTransaction.TransactionId;
                 }
@@ -528,17 +513,13 @@ namespace BankersChoice.API.Services
                     expectedBalance = new BalanceEntity()
                     {
                         BalanceType = BalanceTypeEnum.expected,
-                        BalanceAmount = new AmountEntity()
-                        {
-                            Amount = closingBookedBalance.BalanceAmount.Amount,
-                            Currency = closingBookedBalance.BalanceAmount.Currency
-                        },
+                        BalanceAmount = closingBookedBalance.BalanceAmount.RealCopy(),
                         CreditLimitIncluded = false,
                     };
                     balances.Add(expectedBalance);
                 }
 
-                expectedBalance.BalanceAmount.Amount += newCreditTransaction.TransactionAmount.Amount;
+                expectedBalance.BalanceAmount = expectedBalance.BalanceAmount.Add(newCreditTransaction.TransactionAmount);
                 expectedBalance.LastChangeDateTime = dateTimeNow;
                 expectedBalance.LastCommittedTransaction = newCreditTransaction.TransactionId;
 
@@ -555,8 +536,7 @@ namespace BankersChoice.API.Services
                         balances.Add(authorizedBalance);
                     }
 
-                    authorizedBalance.BalanceAmount.Amount =
-                        expectedBalance.BalanceAmount.Amount + foundAccount.AuthorizedLimit.Amount;
+                    authorizedBalance.BalanceAmount = expectedBalance.BalanceAmount.Add(foundAccount.AuthorizedLimit);
                     authorizedBalance.LastChangeDateTime = dateTimeNow;
                     authorizedBalance.LastCommittedTransaction = newCreditTransaction.TransactionId;
                 }
@@ -598,14 +578,14 @@ namespace BankersChoice.API.Services
                 var balances = foundAccount.Balances.ToList();
                 var closingBookedBalance = balances.First(b => b.BalanceType == BalanceTypeEnum.closingBooked);
 
-                closingBookedBalance.BalanceAmount.Amount += newCreditTransaction.TransactionAmount.Amount;
+                closingBookedBalance.BalanceAmount = closingBookedBalance.BalanceAmount.Add(newCreditTransaction.TransactionAmount);
                 closingBookedBalance.LastChangeDateTime = dateTimeNow;
                 closingBookedBalance.LastCommittedTransaction = newCreditTransaction.TransactionId;
 
                 var expectedBalance = balances.FirstOrDefault(b => b.BalanceType == BalanceTypeEnum.expected);
                 if (expectedBalance != null)
                 {
-                    if (expectedBalance.BalanceAmount.Amount == closingBookedBalance.BalanceAmount.Amount)
+                    if (expectedBalance.BalanceAmount.AreEqual(closingBookedBalance.BalanceAmount))
                     {
                         balances.Remove(expectedBalance);
                     }
@@ -648,14 +628,14 @@ namespace BankersChoice.API.Services
                 var balances = foundAccount.Balances.ToList();
                 var closingBookedBalance = balances.First(b => b.BalanceType == BalanceTypeEnum.closingBooked);
 
-                closingBookedBalance.BalanceAmount.Amount -= newDebitTransaction.TransactionAmount.Amount;
+                closingBookedBalance.BalanceAmount = closingBookedBalance.BalanceAmount.Subtract(newDebitTransaction.TransactionAmount);
                 closingBookedBalance.LastChangeDateTime = dateTimeNow;
                 closingBookedBalance.LastCommittedTransaction = newDebitTransaction.TransactionId;
 
                 var expectedBalance = balances.FirstOrDefault(b => b.BalanceType == BalanceTypeEnum.expected);
                 if (expectedBalance != null)
                 {
-                    if (expectedBalance.BalanceAmount.Amount == closingBookedBalance.BalanceAmount.Amount)
+                    if (expectedBalance.BalanceAmount.AreEqual(closingBookedBalance.BalanceAmount))
                     {
                         balances.Remove(expectedBalance);
                     }

@@ -5,7 +5,7 @@ namespace BankersChoice.API.Models.ApiDtos.Account
 {
     public class BalanceOutDto
     {
-        public AmountDto BalanceAmount { get; set; }
+        public AmountOutDto BalanceAmount { get; set; }
         public BalanceTypeEnum BalanceType { get; set; }
         public bool CreditLimitIncluded { get; set; }
         public DateTimeOffset LastChangeDateTime { get; set; }
@@ -15,7 +15,7 @@ namespace BankersChoice.API.Models.ApiDtos.Account
         {
             return new BalanceOutDto()
             {
-                BalanceAmount = AmountDto.EntityToOutDto(balanceEntity.BalanceAmount),
+                BalanceAmount = AmountOutDto.EntityToOutDto(balanceEntity.BalanceAmount),
                 BalanceType = balanceEntity.BalanceType,
                 CreditLimitIncluded = balanceEntity.CreditLimitIncluded,
                 LastChangeDateTime = balanceEntity.LastChangeDateTime,

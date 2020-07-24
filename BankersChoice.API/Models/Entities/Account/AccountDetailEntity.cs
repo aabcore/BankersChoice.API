@@ -28,6 +28,9 @@ namespace BankersChoice.API.Models.Entities.Account
         [BsonRepresentation(BsonType.String)]
         public DateTimeOffset LastModifiedDate { get; set; }
 
+        [BsonRepresentation(BsonType.String)]
+        public DateTimeOffset CreatedDate { get; set; }
+
         public AmountEntity AuthorizedLimit { get; set; }
     }
 }

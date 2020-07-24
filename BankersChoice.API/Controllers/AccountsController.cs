@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Net.Mime;
 using System.Threading.Tasks;
 using BankersChoice.API.Models;
+using BankersChoice.API.Models.ApiDtos;
 using BankersChoice.API.Models.ApiDtos.Account;
 using BankersChoice.API.Models.Entities;
 using BankersChoice.API.Models.Entities.Account;
@@ -66,10 +66,23 @@ namespace BankersChoice.API.Controllers
 
         [HttpPost]
         [ProducesResponseType(typeof(AccountDetailsOutDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BadRequestOutDto), StatusCodes.Status400BadRequest)]
+
         public async Task<IActionResult> AddNewAccount(AccountNewDto account)
         {
-            var createdAccount = await _accountService.Create(account);
-            return Ok(createdAccount);
+            var createdAccountResult = await _accountService.Create(account);
+
+            switch (createdAccountResult)
+            {
+                case BadRequestLockableResult<AccountDetailsOutDto> badRequestLockableResult:
+                    return BadRequest(badRequestLockableResult.Problem);
+                case FailedLockableResult<AccountDetailsOutDto> failedLockableResult:
+                    return StatusCode(StatusCodes.Status500InternalServerError, failedLockableResult.Error);
+                case SuccessfulLockableResult<AccountDetailsOutDto> successfulLockableResult:
+                    return Ok(successfulLockableResult.Value);
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(createdAccountResult));
+            }
         }
 
         [HttpPatch]
@@ -165,61 +178,5 @@ namespace BankersChoice.API.Controllers
                     return StatusCode(500, new ArgumentOutOfRangeException(nameof(unlockAccountResult)));
             }
         }
-    }
-
-    public class UnlockAccountInDto
-    {
-        public string LockSecret { get; set; }
-    }
-
-    public class LockAccountInDto
-    {
-        public Guid UserId { get; set; }
-    }
-
-    public class LockAccountOutDto
-    {
-        public Guid ResourceId { get; set; }
-        public Guid UserId { get; set; }
-        public bool GotLock { get; set; }
-        public string LockSecret { get; set; }
-    }
-
-    public class UnlockAccountOutDto
-    {
-        public bool SuccessfullyUnlocked { get; set; }
-    }
-
-    public class AccountUpdateDto
-    {
-        public string Name { get; set; }
-        public AccountStatusEnum? Status { get; set; }
-        public string Msisdn { get; set; }
-
-        [Required]
-        public string LockSecret { get; set; }
-    }
-
-    public class AccountNewDto
-    {
-        [Required]
-        public string Name { get; set; }
-
-        [Required]
-        public string Product { get; set; }
-
-        public ExternalCashAccountType1Code CashAccountType { get; set; } = ExternalCashAccountType1Code.TRAN;
-        public AccountStatusEnum Status { get; set; } = AccountStatusEnum.enabled;
-
-        [Required]
-        public UsageEnum Usage { get; set; }
-
-        [Required]
-        public AmountDto InitialBalance { get; set; }
-
-        [Required]
-        public string Msisdn { get; set; }
-
-        public AmountDto AuthorizedLimit { get; set; }
     }
 }

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net.Mime;
 using System.Threading.Tasks;
 using BankersChoice.API.Models;
+using BankersChoice.API.Models.ApiDtos;
 using BankersChoice.API.Models.ApiDtos.Account;
 using BankersChoice.API.Models.ApiDtos.Transaction;
 using BankersChoice.API.Models.Entities.Account;
@@ -252,7 +253,7 @@ namespace BankersChoice.API.Controllers
         public string CheckId { get; set; }
 
         [Required]
-        public AmountDto TransactionAmount { get; set; }
+        public AmountInDto TransactionAmount { get; set; }
 
         public string LockSecret { get; set; }
     }

@@ -5,6 +5,8 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using BankersChoice.API.Controllers;
 using BankersChoice.API.Models;
+using BankersChoice.API.Models.ApiDtos;
+using BankersChoice.API.Models.ApiDtos.Account;
 using BankersChoice.API.Models.ApiDtos.Transaction;
 using BankersChoice.API.Services;
 using Microsoft.AspNetCore.Builder;
@@ -45,25 +47,46 @@ namespace BankersChoice.API
             {
                 c.GeneratePolymorphicSchemas(
                     discriminatorSelector: d =>
-                {
-                    if (d == typeof(TransactionDetailsOutDto))
-                        return "transactionType";
-                    else
-                        return null;
-                },
-                    subTypesResolver: type =>
-                {
-                    if (type == typeof(TransactionDetailsOutDto))
                     {
-                        return new Type[]
+                        if (d == typeof(TransactionDetailsOutDto))
+                            return "transactionType";
+                        if (d == typeof(AmountOutDto))
+                            return "Currency";
+                        if (d == typeof(AmountInDto))
+                            return "Currency";
+                        return null;
+                    },
+                    subTypesResolver: type =>
+                    {
+                        if (type == typeof(TransactionDetailsOutDto))
                         {
-                            typeof(CreditTransactionDetailsOutDto),
-                            typeof(DebitTransactionDetailsOutDto)
-                        };
-                    }
+                            return new Type[]
+                            {
+                                typeof(CreditTransactionDetailsOutDto),
+                                typeof(DebitTransactionDetailsOutDto)
+                            };
+                        }
 
-                    return Enumerable.Empty<Type>();
-                });
+                        if (type == typeof(AmountOutDto))
+                        {
+                            return new Type[]
+                            {
+                                typeof(GalacticCurrencyStandardOutDto),
+                                typeof(WizardingCurrencyOutDto)
+                            };
+                        }
+
+                        if (type == typeof(AmountInDto))
+                        {
+                            return new Type[]
+                            {
+                                typeof(GalacticCurrencyStandardInDto),
+                                typeof(WizardingCurrencyInDto)
+                            };
+                        }
+
+                        return Enumerable.Empty<Type>();
+                    });
             });
             services.AddSwaggerGenNewtonsoftSupport(); // Must be places after .AddSwaggerGen();
         }
@@ -80,10 +103,7 @@ namespace BankersChoice.API
 
             app.UseSwagger();
 
-            app.UseSwaggerUI(c =>
-            {
-                c.SwaggerEndpoint("v1/swagger.json", "BankersChoice API");
-            });
+            app.UseSwaggerUI(c => { c.SwaggerEndpoint("v1/swagger.json", "BankersChoice API"); });
 
             app.UseRouting();
 

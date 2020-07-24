@@ -62,7 +62,7 @@ namespace BankersChoice.API.Models.ApiDtos.Transaction
         public Guid TransactionId { get; set; }
         public TransactionTypeEnum TransactionType { get; set; }
         public string CheckId { get; set; }
-        public AmountDto TransactionAmount { get; set; }
+        public AmountOutDto TransactionAmount { get; set; }
         public DateTimeOffset? BookingDate { get; set; }
         public DateTimeOffset EntryDate { get; set; }
         public BookingStatusEnum BookingStatus { get; set; }
@@ -94,7 +94,7 @@ namespace BankersChoice.API.Models.ApiDtos.Transaction
             createdTransactionDetails.TransactionId = transactionEntity.TransactionId;
             createdTransactionDetails.CheckId = transactionEntity.CheckId;
             createdTransactionDetails.BookingDate = transactionEntity.BookingDate;
-            createdTransactionDetails.TransactionAmount = AmountDto.EntityToOutDto(transactionEntity.TransactionAmount);
+            createdTransactionDetails.TransactionAmount = AmountOutDto.EntityToOutDto(transactionEntity.TransactionAmount);
             createdTransactionDetails.BookingStatus = transactionEntity.BookingStatus;
             createdTransactionDetails.EntryDate = transactionEntity.EntryDate;
 
