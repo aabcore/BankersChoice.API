@@ -6,6 +6,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Models\Account\**" />
+    <Content Remove="Models\Account\**" />
+    <EmbeddedResource Remove="Models\Account\**" />
+    <None Remove="Models\Account\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="JsonSubTypes" Version="1.7.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="3.1.5" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="3.1.5" />
@@ -14,10 +21,6 @@
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="5.5.1" />
     <PackageReference Include="Swashbuckle.AspNetCore.Newtonsoft" Version="5.5.1" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Models\Account\" />
   </ItemGroup>
 
 

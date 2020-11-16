@@ -3,6 +3,6 @@
     public enum CurrencyEnum
     {
         GSC,
-        WC
+        BLC
     }
 }

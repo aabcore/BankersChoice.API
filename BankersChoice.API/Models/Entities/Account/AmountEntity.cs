@@ -6,7 +6,7 @@ using MongoDB.Bson.Serialization.Attributes;
 namespace BankersChoice.API.Models.Entities.Account
 {
     [BsonDiscriminator(RootClass = true)]
-    [BsonKnownTypes(typeof(GalacticCurrencyStandardEntity), typeof(WizardingCurrencyEntity))]
+    [BsonKnownTypes(typeof(GalacticCurrencyStandardEntity), typeof(BluCoinCurrencyEntity))]
     public abstract class AmountEntity
     {
         public abstract Decimal AmountInUSD();
@@ -24,13 +24,14 @@ namespace BankersChoice.API.Models.Entities.Account
                         Currency = CurrencyEnum.GSC,
                         Amount = galacticCurrencyStandardEntity.Amount + thisGcs.Amount
                     };
-                case WizardingCurrencyEntity wizardingCurrencyEntity when this is WizardingCurrencyEntity thisWizarding:
-                    return new WizardingCurrencyEntity()
+                case BluCoinCurrencyEntity bluCoinCurrencyEntity when this is BluCoinCurrencyEntity thisBlc:
+                    return new BluCoinCurrencyEntity()
                     {
-                        Currency = CurrencyEnum.WC,
-                        Galleons = wizardingCurrencyEntity.Galleons + thisWizarding.Galleons,
-                        Sickles = wizardingCurrencyEntity.Sickles + thisWizarding.Sickles,
-                        Knuts = wizardingCurrencyEntity.Knuts + thisWizarding.Knuts
+                        Currency = CurrencyEnum.BLC,
+                        Tuns = bluCoinCurrencyEntity.Tuns + thisBlc.Tuns,
+                        Scraposts = bluCoinCurrencyEntity.Scraposts + thisBlc.Scraposts,
+                        Katts = bluCoinCurrencyEntity.Katts + thisBlc.Katts,
+                        Kibels = bluCoinCurrencyEntity.Kibels + thisBlc.Kibels
                     };
                 default:
                     throw new ArgumentOutOfRangeException(nameof(amountEntity));
@@ -47,13 +48,14 @@ namespace BankersChoice.API.Models.Entities.Account
                         Currency = CurrencyEnum.GSC,
                         Amount = thisGcs.Amount - galacticCurrencyStandardEntity.Amount
                     };
-                case WizardingCurrencyEntity wizardingCurrencyEntity when this is WizardingCurrencyEntity thisWizarding:
-                    return new WizardingCurrencyEntity()
+                case BluCoinCurrencyEntity bluCoinCurrencyEntity when this is BluCoinCurrencyEntity thisBlc:
+                    return new BluCoinCurrencyEntity()
                     {
-                        Currency = CurrencyEnum.WC,
-                        Galleons = thisWizarding.Galleons - wizardingCurrencyEntity.Galleons,
-                        Sickles = thisWizarding.Sickles - wizardingCurrencyEntity.Sickles,
-                        Knuts = thisWizarding.Knuts - wizardingCurrencyEntity.Knuts
+                        Currency = CurrencyEnum.BLC,
+                        Tuns =  thisBlc.Tuns - bluCoinCurrencyEntity.Tuns,
+                        Scraposts = thisBlc.Scraposts - bluCoinCurrencyEntity.Scraposts,
+                        Katts = thisBlc.Katts - bluCoinCurrencyEntity.Katts,
+                        Kibels = thisBlc.Kibels - bluCoinCurrencyEntity.Kibels
                     };
                 default:
                     throw new ArgumentOutOfRangeException(nameof(amountEntity));
@@ -70,13 +72,14 @@ namespace BankersChoice.API.Models.Entities.Account
                         Currency = this.Currency,
                         Amount = galacticCurrencyStandardEntity.Amount
                     };
-                case WizardingCurrencyEntity wizardingCurrencyEntity:
-                    return new WizardingCurrencyEntity()
+                case BluCoinCurrencyEntity bluCoinCurrencyEntity:
+                    return new BluCoinCurrencyEntity()
                     {
                         Currency = this.Currency,
-                        Galleons = wizardingCurrencyEntity.Galleons,
-                        Sickles = wizardingCurrencyEntity.Sickles,
-                        Knuts = wizardingCurrencyEntity.Knuts
+                        Tuns = bluCoinCurrencyEntity.Tuns,
+                        Scraposts = bluCoinCurrencyEntity.Scraposts,
+                        Katts = bluCoinCurrencyEntity.Katts,
+                        Kibels = bluCoinCurrencyEntity.Kibels
                     };
                 default:
                     throw new ArgumentOutOfRangeException(this.GetType().Name);
@@ -89,10 +92,11 @@ namespace BankersChoice.API.Models.Entities.Account
             {
                 case GalacticCurrencyStandardEntity galacticCurrencyStandardEntity when compareAmountEntity is GalacticCurrencyStandardEntity compareGcsEntity:
                     return galacticCurrencyStandardEntity.Amount == compareGcsEntity.Amount;
-                case WizardingCurrencyEntity wizardingCurrencyEntity when compareAmountEntity is WizardingCurrencyEntity compareWizardingEntity:
-                    return wizardingCurrencyEntity.Galleons == compareWizardingEntity.Galleons &&
-                           wizardingCurrencyEntity.Sickles == compareWizardingEntity.Sickles &&
-                           wizardingCurrencyEntity.Knuts == compareWizardingEntity.Knuts;
+                case BluCoinCurrencyEntity bluCoinCurrencyEntity when compareAmountEntity is BluCoinCurrencyEntity compareBlcEntity:
+                    return bluCoinCurrencyEntity.Tuns == compareBlcEntity.Tuns &&
+                           bluCoinCurrencyEntity.Scraposts == compareBlcEntity.Scraposts &&
+                           bluCoinCurrencyEntity.Katts == compareBlcEntity.Katts &&
+                           bluCoinCurrencyEntity.Kibels == compareBlcEntity.Kibels;
                 default:
                     throw new ArgumentOutOfRangeException(this.GetType().Name);
             }
@@ -109,16 +113,16 @@ namespace BankersChoice.API.Models.Entities.Account
         }
     }
 
-    public class WizardingCurrencyEntity : AmountEntity
+    public class BluCoinCurrencyEntity : AmountEntity
     {
-        public long Galleons { get; set; }
-        public long Sickles { get; set; }
-        public long Knuts { get; set; }
-
+        public long Tuns { get; set; }
+        public long Scraposts { get; set; }
+        public long Katts { get; set; }
+        public long Kibels { get; set; }
         public override decimal AmountInUSD()
         {
-            var totalGalleons = Galleons + (Sickles / 17m) + ((Knuts / 29m) / 17m);
-            return totalGalleons / 6.3m;
+            var totalTuns = Tuns + (Scraposts / 31m) + ((Katts / 8m) / 31m) + (((Kibels / 14m) / 8m) / 31m);
+            return totalTuns / 9.5m;
         }
     }
 }

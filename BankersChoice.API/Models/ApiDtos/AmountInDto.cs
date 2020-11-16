@@ -9,7 +9,7 @@ namespace BankersChoice.API.Models.ApiDtos
 {
     [JsonConverter(typeof(JsonSubtypes), nameof(AmountInDto.Currency))]
     [JsonSubTypes.JsonSubtypes.KnownSubType(typeof(GalacticCurrencyStandardInDto), CurrencyEnum.GSC)]
-    [JsonSubTypes.JsonSubtypes.KnownSubType(typeof(WizardingCurrencyInDto), CurrencyEnum.WC)]
+    [JsonSubTypes.JsonSubtypes.KnownSubType(typeof(BluCoinCurrencyInDto), CurrencyEnum.BLC)]
     public abstract class AmountInDto: IValidatableObject
     {
         [Required]
@@ -24,12 +24,13 @@ namespace BankersChoice.API.Models.ApiDtos
                     Currency = this.Currency,
                     Amount = galacticCurrencyStandardOutDto.Amount.Value
                 },
-                WizardingCurrencyInDto wizardingCurrencyOutDto => new WizardingCurrencyEntity()
+                BluCoinCurrencyInDto bluCoinCurrencyOutDto => new BluCoinCurrencyEntity()
                 {
                     Currency = this.Currency,
-                    Galleons = wizardingCurrencyOutDto.Galleons.Value,
-                    Sickles = wizardingCurrencyOutDto.Sickles.Value,
-                    Knuts = wizardingCurrencyOutDto.Knuts.Value,
+                    Tuns = bluCoinCurrencyOutDto.Tuns.Value,
+                    Scraposts = bluCoinCurrencyOutDto.Scraposts.Value,
+                    Katts = bluCoinCurrencyOutDto.Katts.Value,
+                    Kibels = bluCoinCurrencyOutDto.Kibels.Value
                 },
                 _ => throw new ArgumentOutOfRangeException()
             };

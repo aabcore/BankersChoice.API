@@ -72,7 +72,7 @@ namespace BankersChoice.API
                             return new Type[]
                             {
                                 typeof(GalacticCurrencyStandardOutDto),
-                                typeof(WizardingCurrencyOutDto)
+                                typeof(BluCoinCurrencyOutDto)
                             };
                         }
 
@@ -81,7 +81,7 @@ namespace BankersChoice.API
                             return new Type[]
                             {
                                 typeof(GalacticCurrencyStandardInDto),
-                                typeof(WizardingCurrencyInDto)
+                                typeof(BluCoinCurrencyInDto)
                             };
                         }
 
