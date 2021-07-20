@@ -8,6 +8,7 @@ using BankersChoice.API.Models.ApiDtos.Transaction;
 using BankersChoice.API.Models.Entities.Account;
 using BankersChoice.API.Models.Entities.Transaction;
 using BankersChoice.API.Results;
+using Microsoft.Extensions.Configuration;
 using MongoDB.Driver;
 
 namespace BankersChoice.API.Services
@@ -17,7 +18,7 @@ namespace BankersChoice.API.Services
         private AccountService AccountService { get; }
         private readonly IMongoCollection<TransactionEntity> TransactionCollection;
 
-        public TransactionService(DatabaseSettings dbSettings, AccountService accountService)
+        public TransactionService(DatabaseSettings dbSettings, AccountService accountService, IConfiguration config) : base(config)
         {
             AccountService = accountService;
             var database = BuildDatabaseClient(dbSettings);

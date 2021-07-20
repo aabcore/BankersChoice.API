@@ -7,6 +7,7 @@ using BankersChoice.API.Models;
 using BankersChoice.API.Models.ApiDtos.User;
 using BankersChoice.API.Models.Entities;
 using BankersChoice.API.Results;
+using Microsoft.Extensions.Configuration;
 using MongoDB.Driver;
 
 namespace BankersChoice.API.Services
@@ -15,7 +16,7 @@ namespace BankersChoice.API.Services
     {
         private IMongoCollection<UserEntity> UsersCollection { get; }
 
-        public UserService(DatabaseSettings dbSettings)
+        public UserService(DatabaseSettings dbSettings, IConfiguration config) : base(config)
         {
             var database = BuildDatabaseClient(dbSettings);
             UsersCollection = database.GetCollection<UserEntity>(dbSettings.UsersCollectionName);

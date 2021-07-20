@@ -12,6 +12,7 @@ using BankersChoice.API.Models.Entities.Account;
 using BankersChoice.API.Models.Entities.Transaction;
 using BankersChoice.API.Randomization;
 using BankersChoice.API.Results;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.EventLog;
 using MongoDB.Driver;
 using Exception = System.Exception;
@@ -23,7 +24,7 @@ namespace BankersChoice.API.Services
         private UserService UserService { get; }
         private readonly IMongoCollection<AccountDetailEntity> _accounts;
 
-        public AccountService(DatabaseSettings dbSettings, UserService userService)
+        public AccountService(DatabaseSettings dbSettings, UserService userService, IConfiguration config) : base(config)
         {
             UserService = userService;
             var database = BuildDatabaseClient(dbSettings);
